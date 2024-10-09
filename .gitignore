@@ -1,0 +1,5 @@
+.jj/
+
+zig-cache/
+zig-out/
+.direnv/
