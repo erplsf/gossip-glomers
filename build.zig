@@ -16,8 +16,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "rtiz",
-        .root_source_file = b.path("src/main.zig"),
+        .name = "echo",
+        .root_source_file = b.path("src/echo.zig"),
         .target = target,
         .optimize = optimize,
     });
