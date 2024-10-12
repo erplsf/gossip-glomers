@@ -4,6 +4,7 @@ const BodyType = enum {
     init,
     init_ok,
     echo,
+    echo_ok,
 };
 
 const Body = union(BodyType) {
@@ -17,7 +18,17 @@ const Body = union(BodyType) {
         type: []const u8 = "init_ok",
         in_reply_to: i64,
     },
-    echo: struct {},
+    echo: struct {
+        type: []const u8 = "echo",
+        echo: []const u8,
+        msg_id: i64,
+    },
+    echo_ok: struct {
+        type: []const u8 = "echo_ok",
+        echo: []const u8,
+        msg_id: i64,
+        in_reply_to: i64,
+    },
 };
 
 const Message = struct {
@@ -49,6 +60,11 @@ const Message = struct {
 pub fn buildInitReply(init_message: Message) Message {
     const body = Body{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
     return .{ .src = init_message.dest, .dest = init_message.src, .body = body };
+}
+
+pub fn buildEchoReply(echo_message: Message) Message {
+    _ = echo_message;
+    return .{};
 }
 
 pub fn main() !void {
@@ -94,8 +110,9 @@ pub fn main() !void {
                     }
                     break :blk .{ .init = .{ .msg_id = body.get("msg_id").?.integer, .node_id = body.get("node_id").?.string, .node_ids = node_ids } };
                 },
-                .init_ok => .{ .init_ok = undefined },
-                .echo => .{ .echo = undefined },
+                inline else => |body_type_enum| blk: {
+                    break :blk @unionInit(Body, @tagName(body_type_enum), undefined);
+                },
             };
 
             const message: Message = .{
