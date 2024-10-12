@@ -21,7 +21,8 @@
         buildInputs = with pkgs; [
           zls.packages.${system}.default
           zig-overlay.packages.${system}.master
-          temurin-jre-bin
+          temurin-jre-bin # for maelstrom
+          gnuplot # for rendering results
         ];
       };
     };
