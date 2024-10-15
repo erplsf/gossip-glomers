@@ -15,12 +15,18 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const common = b.createModule(.{
+        .root_source_file = b.path("src/common.zig"),
+    });
+
     const exe = b.addExecutable(.{
         .name = "echo",
         .root_source_file = b.path("src/echo.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    exe.root_module.addImport("common", common);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
