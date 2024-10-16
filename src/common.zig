@@ -60,9 +60,7 @@ pub const Message = struct {
 
         try jw.objectField("body");
         switch (self.body) {
-            inline else => |body| {
-                try jw.write(body);
-            },
+            inline else => |body| try jw.write(body),
         }
 
         try jw.endObject();
