@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const BodyType = enum {
     init,
     init_ok,
@@ -27,6 +29,19 @@ pub const Body = union(BodyType) {
         msg_id: i64,
         in_reply_to: i64,
     },
+
+    pub fn jsonParseFromValue(allocator: std.mem.Allocator, value: std.json.Value, options: std.json.ParseOptions) !Body {
+        const body_type = value.object.get("type").?.string;
+
+        const type_info = @typeInfo(Body).@"union";
+        inline for (type_info.fields) |field| {
+            if (std.mem.eql(u8, field.name, body_type)) {
+                return @unionInit(Body, field.name, try std.json.innerParseFromValue(field.type, allocator, value, options));
+            }
+        }
+
+        return error.UnknownField;
+    }
 };
 
 pub const Message = struct {
