@@ -19,6 +19,11 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/common.zig"),
     });
 
+    const node = b.createModule(.{
+        .root_source_file = b.path("src/node.zig"),
+    });
+    node.addImport("common", common);
+
     const exe = b.addExecutable(.{
         .name = "echo",
         .root_source_file = b.path("src/echo.zig"),
@@ -27,6 +32,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.addImport("common", common);
+    exe.root_module.addImport("node", node);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
