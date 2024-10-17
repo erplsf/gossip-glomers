@@ -24,30 +24,39 @@ const Node = struct {
     out: std.io.AnyWriter,
     log: std.io.AnyWriter,
 
-    buffer: std.ArrayList(u8),
+    input_buffer: std.ArrayList(u8),
+    output_buffer: std.io.BufferedWriter(4096, std.io.AnyWriter),
+    log_buffer: std.io.BufferedWriter(4096, std.io.AnyWriter),
 
     pub fn init(allocator: Allocator, inp: std.io.AnyReader, out: std.io.AnyWriter, log: std.io.AnyWriter) Node {
         const buffer = std.ArrayList(u8).init(allocator);
+
+        const output_buffer = std.io.bufferedWriter(out);
+        const log_buffer = std.io.bufferedWriter(log);
+
         return .{
             .allocator = allocator,
             .inp = inp,
             .out = out,
             .log = log,
-            .buffer = buffer,
+
+            .input_buffer = buffer,
+            .output_buffer = output_buffer,
+            .log_buffer = log_buffer,
         };
     }
 
     pub fn deinit(self: *Node) void {
-        self.buffer.deinit();
+        self.input_buffer.deinit();
     }
 
     fn receiveMessage(self: *Node) !?std.json.Parsed(com.Message) {
-        self.inp.streamUntilDelimiter(self.buffer.writer(), '\n', null) catch |err| {
+        self.inp.streamUntilDelimiter(self.input_buffer.writer(), '\n', null) catch |err| {
             if (err == error.EndOfStream) std.process.exit(0) else return err; // handle EndOfStream gracefully
         };
-        defer self.buffer.clearRetainingCapacity();
+        defer self.input_buffer.clearRetainingCapacity();
 
-        const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
+        const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
         defer parsedValue.deinit();
 
         const parsedMessage = std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always }) catch return null;
@@ -55,13 +64,22 @@ const Node = struct {
         return parsedMessage;
     }
 
+    fn sendMessage(self: *Node, message: com.Message) !void {
+        const writer = self.output_buffer.writer();
+        try std.json.stringify(message, .{}, writer);
+        try writer.print("\n", .{});
+        try self.output_buffer.flush();
+    }
+
+    fn logReceived(self: *Node, message: com.Message) !void {
+        const writer = self.log_buffer.writer();
+        try writer.print("Received: ", .{});
+        try std.json.stringify(message, .{}, writer);
+        try writer.print("\n", .{});
+        try self.log_buffer.flush();
+    }
+
     pub fn run(self: *Node) !void {
-        var stdout_buffer = std.io.bufferedWriter(self.out);
-        const stdout = stdout_buffer.writer();
-
-        var stderr_buffer = std.io.bufferedWriter(self.log);
-        const stderr = stderr_buffer.writer();
-
         while (true) {
             const maybeParsedMessage = try self.receiveMessage();
 
@@ -69,30 +87,16 @@ const Node = struct {
                 defer parsedMessage.deinit();
                 const message = parsedMessage.value;
 
+                try self.logReceived(message);
+
                 switch (message.body) {
                     .init => {
                         const reply = buildInitReply(message);
-
-                        try stderr.print("Responding: ", .{});
-                        try std.json.stringify(reply, .{}, stderr);
-                        try stderr.print("\n", .{});
-                        try stderr_buffer.flush();
-
-                        try std.json.stringify(reply, .{}, stdout);
-                        try stdout.print("\n", .{});
-                        try stdout_buffer.flush(); // Don't forget to flush!
+                        try self.sendMessage(reply);
                     },
                     .echo => {
                         const reply = buildEchoReply(message);
-
-                        try stderr.print("Responding: ", .{});
-                        try std.json.stringify(reply, .{}, stderr);
-                        try stderr.print("\n", .{});
-                        try stderr_buffer.flush();
-
-                        try std.json.stringify(reply, .{}, stdout);
-                        try stdout.print("\n", .{});
-                        try stdout_buffer.flush();
+                        try self.sendMessage(reply);
                     },
                     else => {},
                 }
