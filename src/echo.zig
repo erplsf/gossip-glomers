@@ -5,12 +5,6 @@ const com = @import("common");
 var message_counter: usize = 0;
 
 // TODO: accept global node options and build respond message with correct node id
-pub fn buildInitReply(init_message: com.Message) com.Message {
-    const body = com.Body{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
-    return .{ .src = init_message.dest, .dest = init_message.src, .body = body };
-}
-
-// TODO: accept global node options and build respond message with correct node id
 // HACK: global message counter, not thread safe
 pub fn buildEchoReply(echo_message: com.Message) com.Message {
     const body = com.Body{ .echo_ok = .{ .echo = echo_message.body.echo.echo, .in_reply_to = echo_message.body.echo.msg_id, .msg_id = @intCast(message_counter) } };
@@ -48,6 +42,12 @@ const Node = struct {
 
     pub fn deinit(self: *Node) void {
         self.input_buffer.deinit();
+    }
+
+    // TODO: accept global node options and build respond message with correct node id
+    pub fn buildInitReply(init_message: com.Message) com.Message {
+        const body = com.Body{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
+        return .{ .src = init_message.dest, .dest = init_message.src, .body = body };
     }
 
     fn receiveMessage(self: *Node) !?std.json.Parsed(com.Message) {
