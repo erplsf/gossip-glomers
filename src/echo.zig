@@ -24,8 +24,35 @@ const Node = struct {
     out: std.io.AnyWriter,
     log: std.io.AnyWriter,
 
+    buffer: std.ArrayList(u8),
+
     pub fn init(allocator: Allocator, inp: std.io.AnyReader, out: std.io.AnyWriter, log: std.io.AnyWriter) Node {
-        return .{ .allocator = allocator, .inp = inp, .out = out, .log = log };
+        const buffer = std.ArrayList(u8).init(allocator);
+        return .{
+            .allocator = allocator,
+            .inp = inp,
+            .out = out,
+            .log = log,
+            .buffer = buffer,
+        };
+    }
+
+    pub fn deinit(self: *Node) void {
+        self.buffer.deinit();
+    }
+
+    fn receiveMessage(self: *Node) !?std.json.Parsed(com.Message) {
+        self.inp.streamUntilDelimiter(self.buffer.writer(), '\n', null) catch |err| {
+            if (err == error.EndOfStream) std.process.exit(0) else return err; // handle EndOfStream gracefully
+        };
+        defer self.buffer.clearRetainingCapacity();
+
+        const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
+        defer parsedValue.deinit();
+
+        const parsedMessage = std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always }) catch return null;
+
+        return parsedMessage;
     }
 
     pub fn run(self: *Node) !void {
@@ -35,25 +62,12 @@ const Node = struct {
         var stderr_buffer = std.io.bufferedWriter(self.log);
         const stderr = stderr_buffer.writer();
 
-        var buffer = std.ArrayList(u8).init(self.allocator);
-        defer buffer.deinit();
-
         while (true) {
-            self.inp.streamUntilDelimiter(buffer.writer(), '\n', null) catch |err| {
-                if (err == error.EndOfStream) std.process.exit(0) else return err; // handle EndOfStream gracefully
-            };
-            defer buffer.clearRetainingCapacity();
+            const maybeParsedMessage = try self.receiveMessage();
 
-            try stderr.print("Received: {s}\n", .{buffer.items});
-            try stderr_buffer.flush();
-
-            if (std.json.parseFromSlice(std.json.Value, self.allocator, buffer.items, .{ .allocate = .alloc_if_needed })) |parsed| {
-                defer parsed.deinit();
-
-                const parsedMessage = try std.json.parseFromValue(com.Message, self.allocator, parsed.value, .{ .allocate = .alloc_if_needed });
+            if (maybeParsedMessage) |parsedMessage| {
                 defer parsedMessage.deinit();
-
-                const message: com.Message = parsedMessage.value;
+                const message = parsedMessage.value;
 
                 switch (message.body) {
                     .init => {
@@ -82,7 +96,7 @@ const Node = struct {
                     },
                     else => {},
                 }
-            } else |_| {} // if error happened during parsing, do nothing and process next message
+            }
         }
     }
 };
