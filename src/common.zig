@@ -56,6 +56,7 @@ pub const Body = union(BodyType) {
 };
 
 pub const Message = struct {
+    id: ?i64 = null, // HACK: received with all messages but we don't really care about it
     src: []const u8,
     dest: []const u8,
     body: Body,
