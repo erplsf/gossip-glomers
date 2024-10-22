@@ -51,10 +51,14 @@ pub fn Node(comptime T: type) type {
             };
             defer self.input_buffer.clearRetainingCapacity();
 
-            const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
+            const writer = self.log_buffer.writer();
+            try writer.print("Raw received text: {s}\n", .{self.input_buffer.items});
+            try self.log_buffer.flush();
+
+            const parsedValue = try std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed });
             defer parsedValue.deinit();
 
-            const parsedMessage = std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always }) catch return null;
+            const parsedMessage = try std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always });
 
             return parsedMessage;
         }
@@ -68,7 +72,15 @@ pub fn Node(comptime T: type) type {
 
         fn logReceived(self: *@This(), message: com.Message) !void {
             const writer = self.log_buffer.writer();
-            try writer.print("Received: ", .{});
+            try writer.print("Received message: ", .{});
+            try std.json.stringify(message, .{}, writer);
+            try writer.print("\n", .{});
+            try self.log_buffer.flush();
+        }
+
+        fn logReply(self: *@This(), message: com.Message) !void {
+            const writer = self.log_buffer.writer();
+            try writer.print("Replying with: ", .{});
             try std.json.stringify(message, .{}, writer);
             try writer.print("\n", .{});
             try self.log_buffer.flush();
@@ -87,6 +99,7 @@ pub fn Node(comptime T: type) type {
                     switch (message.body) {
                         .init => {
                             const reply = buildInitReply(message);
+                            try self.logReply(reply);
                             try self.sendMessage(reply);
                         },
                         inline else => |_, tag| {
@@ -95,6 +108,7 @@ pub fn Node(comptime T: type) type {
                                 const field = @field(T, fn_name);
                                 const maybeReply = try @call(.auto, field, .{ &self.handler, self, message });
                                 if (maybeReply) |reply| {
+                                    try self.logReply(reply);
                                     try self.sendMessage(reply);
                                 }
                             }
