@@ -55,7 +55,7 @@ pub fn Node(comptime T: type) type {
             try writer.print("Raw received text: {s}\n", .{self.input_buffer.items});
             try self.log_buffer.flush();
 
-            const parsedValue = try std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed });
+            const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
             defer parsedValue.deinit();
 
             const parsedMessage = try std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always });
