@@ -6,3 +6,6 @@
 zig-out/
 
 /maelstrom/
+/store/
+
+*.json
