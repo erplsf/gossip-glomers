@@ -81,7 +81,7 @@ pub const Message = struct {
 
 pub const WrappedMessage = struct {
     message: Message,
-    allocator: ?std.mem.Allocator = null,
+    allocator: ?std.heap.ArenaAllocator = null,
 
     pub fn deinit(self: *@This()) void {
         if (self.allocator) |allocator| allocator.deinit();
