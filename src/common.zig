@@ -45,6 +45,7 @@ pub const Body = union(BodyType) {
     topology: struct {
         type: []const u8 = "topology",
         topology: std.json.ArrayHashMap([][]const u8),
+        msg_id: i64,
     },
     topology_ok: struct {
         type: []const u8 = "topology_ok",
