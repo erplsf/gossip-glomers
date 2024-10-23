@@ -102,6 +102,7 @@ pub fn Node(comptime T: type) type {
                         .init => {
                             var reply = buildInitReply(message);
                             defer reply.deinit();
+
                             try self.logReply(reply.message);
                             try self.sendMessage(reply.message);
                         },
@@ -109,10 +110,12 @@ pub fn Node(comptime T: type) type {
                             const fn_name = "handle_" ++ @tagName(tag);
                             if (std.meta.hasFn(T, fn_name)) {
                                 const field = @field(T, fn_name);
-                                const maybeReply = try @call(.auto, field, .{ &self.handler, self, message });
-                                if (maybeReply) |reply| {
-                                    try self.logReply(reply);
-                                    try self.sendMessage(reply);
+                                var maybeReply = try @call(.auto, field, .{ &self.handler, self, message });
+                                if (maybeReply) |*reply| {
+                                    defer reply.deinit();
+
+                                    try self.logReply(reply.message);
+                                    try self.sendMessage(reply.message);
                                 }
                             }
                         },

@@ -1,7 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const com = @import("common");
 const Node = @import("node").Node;
+const Message = @import("common").Message;
+const WrappedMessage = @import("common").WrappedMessage;
 
 const UniqueIdsHandler = struct {
     message_counter: usize = 0,
@@ -9,11 +10,12 @@ const UniqueIdsHandler = struct {
     // TODO: accept global node options and build respond message with correct node id
     // HACK: global message counter, not thread safe
     // FIXME: leaks memory
-    pub fn handle_generate(self: *UniqueIdsHandler, node: *Node(UniqueIdsHandler), message: com.Message) !?com.Message {
+    pub fn handle_generate(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
+        defer self.message_counter += 1;
+
         const id = try std.fmt.allocPrint(node.allocator, "{s}-{d}", .{ message.dest, @as(usize, @intCast(self.message_counter)) });
-        const body = com.Body{ .generate_ok = .{ .id = id, .in_reply_to = message.body.generate.msg_id } };
-        self.message_counter += 1;
-        return .{ .src = message.dest, .dest = message.src, .body = body };
+        const body = .{ .generate_ok = .{ .id = id, .in_reply_to = message.body.generate.msg_id } };
+        return .{ .message = .{ .src = message.dest, .dest = message.src, .body = body } };
     }
 };
 

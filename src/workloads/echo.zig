@@ -1,18 +1,20 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const com = @import("common");
 const Node = @import("node").Node;
+const Message = @import("common").Message;
+const WrappedMessage = @import("common").WrappedMessage;
 
 const EchoHandler = struct {
     message_counter: usize = 0,
 
     // TODO: accept global node options and build respond message with correct node id
     // HACK: global message counter, not thread safe
-    pub fn handle_echo(self: *EchoHandler, node: *Node(EchoHandler), echo_message: com.Message) !?com.Message {
+    pub fn handle_echo(self: *@This(), node: *Node(@This()), echo_message: Message) !?WrappedMessage {
         _ = node;
-        const body = com.Body{ .echo_ok = .{ .echo = echo_message.body.echo.echo, .in_reply_to = echo_message.body.echo.msg_id, .msg_id = @intCast(self.message_counter) } };
-        self.message_counter += 1;
-        return .{ .src = echo_message.dest, .dest = echo_message.src, .body = body };
+        defer self.message_counter += 1;
+
+        const body = .{ .echo_ok = .{ .echo = echo_message.body.echo.echo, .in_reply_to = echo_message.body.echo.msg_id, .msg_id = @as(i64, @intCast(self.message_counter)) } };
+        return .{ .message = .{ .src = echo_message.dest, .dest = echo_message.src, .body = body } };
     }
 };
 
