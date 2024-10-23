@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const com = @import("common");
+const Message = @import("common").Message;
+const Body = @import("common").Body;
 
 pub fn Node(comptime T: type) type {
     return struct {
@@ -40,12 +41,12 @@ pub fn Node(comptime T: type) type {
         }
 
         // TODO: accept global node options and build respond message with correct node id
-        pub fn buildInitReply(init_message: com.Message) com.Message {
-            const body = com.Body{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
+        pub fn buildInitReply(init_message: Message) Message {
+            const body = .{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
             return .{ .src = init_message.dest, .dest = init_message.src, .body = body };
         }
 
-        fn receiveMessage(self: *@This()) !?std.json.Parsed(com.Message) {
+        fn receiveMessage(self: *@This()) !?std.json.Parsed(Message) {
             try self.inp.streamUntilDelimiter(self.input_buffer.writer(), '\n', null);
             defer self.input_buffer.clearRetainingCapacity();
 
@@ -56,19 +57,19 @@ pub fn Node(comptime T: type) type {
             const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
             defer parsedValue.deinit();
 
-            const parsedMessage = try std.json.parseFromValue(com.Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always });
+            const parsedMessage = try std.json.parseFromValue(Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always });
 
             return parsedMessage;
         }
 
-        fn sendMessage(self: *@This(), message: com.Message) !void {
+        fn sendMessage(self: *@This(), message: Message) !void {
             const writer = self.output_buffer.writer();
             try std.json.stringify(message, .{}, writer);
             try writer.print("\n", .{});
             try self.output_buffer.flush();
         }
 
-        fn logReceived(self: *@This(), message: com.Message) !void {
+        fn logReceived(self: *@This(), message: Message) !void {
             const writer = self.log_buffer.writer();
             try writer.print("Received message: ", .{});
             try std.json.stringify(message, .{}, writer);
@@ -76,7 +77,7 @@ pub fn Node(comptime T: type) type {
             try self.log_buffer.flush();
         }
 
-        fn logReply(self: *@This(), message: com.Message) !void {
+        fn logReply(self: *@This(), message: Message) !void {
             const writer = self.log_buffer.writer();
             try writer.print("Replying with: ", .{});
             try std.json.stringify(message, .{}, writer);

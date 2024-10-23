@@ -78,3 +78,12 @@ pub const Message = struct {
         try jw.endObject();
     }
 };
+
+pub const WrappedMessage = struct {
+    message: Message,
+    allocator: ?std.mem.Allocator = null,
+
+    pub fn deinit(self: *@This()) void {
+        if (self.allocator) |allocator| allocator.deinit();
+    }
+};
