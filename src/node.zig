@@ -47,7 +47,7 @@ pub fn Node(comptime T: type) type {
             return .{ .message = .{ .src = init_message.dest, .dest = init_message.src, .body = body } };
         }
 
-        fn receiveMessage(self: *@This()) !?std.json.Parsed(Message) {
+        fn receiveMessage(self: *@This()) !?WrappedMessage {
             try self.inp.streamUntilDelimiter(self.input_buffer.writer(), '\n', null);
             defer self.input_buffer.clearRetainingCapacity();
 
@@ -55,12 +55,18 @@ pub fn Node(comptime T: type) type {
             try writer.print("Raw received text: {s}\n", .{self.input_buffer.items});
             try self.log_buffer.flush();
 
-            const parsedValue = std.json.parseFromSlice(std.json.Value, self.allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
-            defer parsedValue.deinit();
+            var arena = std.heap.ArenaAllocator.init(self.allocator);
+            errdefer arena.deinit();
 
-            const parsedMessage = try std.json.parseFromValue(Message, self.allocator, parsedValue.value, .{ .allocate = .alloc_always });
+            const allocator = arena.allocator();
 
-            return parsedMessage;
+            const value = std.json.parseFromSliceLeaky(std.json.Value, allocator, self.input_buffer.items, .{ .allocate = .alloc_if_needed }) catch return null;
+            const message = try std.json.parseFromValueLeaky(Message, allocator, value, .{ .allocate = .alloc_if_needed });
+
+            return .{
+                .message = message,
+                .allocator = arena,
+            };
         }
 
         fn sendMessage(self: *@This(), message: Message) !void {
@@ -88,13 +94,13 @@ pub fn Node(comptime T: type) type {
 
         pub fn run(self: *@This()) !void {
             while (true) {
-                const maybeParsedMessage = self.receiveMessage() catch |err| {
+                var maybeParsedMessage = self.receiveMessage() catch |err| {
                     if (err == error.EndOfStream) break else return err; // stop running if the input stream is closed, otherwise just bubble up the error
                 };
 
-                if (maybeParsedMessage) |parsedMessage| {
+                if (maybeParsedMessage) |*parsedMessage| {
                     defer parsedMessage.deinit();
-                    const message = parsedMessage.value;
+                    const message = parsedMessage.message;
 
                     try self.logReceived(message);
 
