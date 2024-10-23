@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Message = @import("common").Message;
+const WrappedMessage = @import("common").WrappedMessage;
 const Body = @import("common").Body;
 
 pub fn Node(comptime T: type) type {
@@ -41,9 +42,9 @@ pub fn Node(comptime T: type) type {
         }
 
         // TODO: accept global node options and build respond message with correct node id
-        pub fn buildInitReply(init_message: Message) Message {
+        pub fn buildInitReply(init_message: Message) WrappedMessage {
             const body = .{ .init_ok = .{ .in_reply_to = init_message.body.init.msg_id } };
-            return .{ .src = init_message.dest, .dest = init_message.src, .body = body };
+            return .{ .message = .{ .src = init_message.dest, .dest = init_message.src, .body = body } };
         }
 
         fn receiveMessage(self: *@This()) !?std.json.Parsed(Message) {
@@ -99,9 +100,10 @@ pub fn Node(comptime T: type) type {
 
                     switch (message.body) {
                         .init => {
-                            const reply = buildInitReply(message);
-                            try self.logReply(reply);
-                            try self.sendMessage(reply);
+                            var reply = buildInitReply(message);
+                            defer reply.deinit();
+                            try self.logReply(reply.message);
+                            try self.sendMessage(reply.message);
                         },
                         inline else => |_, tag| {
                             const fn_name = "handle_" ++ @tagName(tag);
