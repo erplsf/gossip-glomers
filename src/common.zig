@@ -7,6 +7,8 @@ pub const BodyType = enum {
     echo_ok,
     generate,
     generate_ok,
+    topology,
+    topology_ok,
 };
 
 pub const Body = union(BodyType) {
@@ -39,6 +41,13 @@ pub const Body = union(BodyType) {
         type: []const u8 = "generate_ok",
         in_reply_to: i64,
         id: []const u8,
+    },
+    topology: struct {
+        type: []const u8 = "topology",
+        topology: std.json.ArrayHashMap([][]const u8),
+    },
+    topology_ok: struct {
+        type: []const u8 = "topology_ok",
     },
 
     pub fn jsonParseFromValue(allocator: std.mem.Allocator, value: std.json.Value, options: std.json.ParseOptions) !Body {

@@ -17,11 +17,16 @@ pub fn Node(comptime T: type) type {
         output_buffer: std.io.BufferedWriter(4096, std.io.AnyWriter),
         log_buffer: std.io.BufferedWriter(4096, std.io.AnyWriter),
 
-        pub fn init(allocator: Allocator, inp: std.io.AnyReader, out: std.io.AnyWriter, log: std.io.AnyWriter, handler: T) @This() {
+        pub fn init(allocator: Allocator, inp: std.io.AnyReader, out: std.io.AnyWriter, log: std.io.AnyWriter) @This() {
             const buffer = std.ArrayList(u8).init(allocator);
 
             const output_buffer = std.io.bufferedWriter(out);
             const log_buffer = std.io.bufferedWriter(log);
+
+            const handler = if (std.meta.hasFn(T, "init"))
+                T.init(allocator)
+            else
+                T{};
 
             return .{
                 .allocator = allocator,
@@ -39,6 +44,9 @@ pub fn Node(comptime T: type) type {
 
         pub fn deinit(self: *@This()) void {
             self.input_buffer.deinit();
+            if (std.meta.hasFn(T, "deinit")) {
+                self.handler.deinit();
+            }
         }
 
         // TODO: accept global node options and build respond message with correct node id

@@ -27,7 +27,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var node = Node(EchoHandler).init(allocator, stdin, stdout, stderr, EchoHandler{});
+    var node = Node(EchoHandler).init(allocator, stdin, stdout, stderr);
     defer node.deinit();
 
     try node.run();

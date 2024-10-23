@@ -1,10 +1,25 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const com = @import("common");
+const Message = @import("common").Message;
+const WrappedMessage = @import("common").WrappedMessage;
 const Node = @import("node").Node;
 
 const BroadcastHandler = struct {
     message_counter: usize = 0,
+    messages: std.ArrayList(usize) = undefined,
+
+    pub fn init(allocator: Allocator) @This() {
+        const messages = std.ArrayList(usize).init(allocator);
+        return .{
+            .messages = messages,
+        };
+    }
+
+    pub fn handle_topology(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
+        _ = self;
+        _ = node;
+        return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .topology_ok = .{} } } };
+    }
 
     // TODO: accept global node options and build respond message with correct node id
     // HACK: global message counter, not thread safe
@@ -14,6 +29,10 @@ const BroadcastHandler = struct {
     //     self.message_counter += 1;
     //     return .{ .src = message.dest, .dest = message.src, .body = body };
     // }
+
+    pub fn deinit(self: *@This()) void {
+        self.messages.deinit();
+    }
 };
 
 pub fn main() !void {
@@ -25,7 +44,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var node = Node(BroadcastHandler).init(allocator, stdin, stdout, stderr, BroadcastHandler{});
+    var node = Node(BroadcastHandler).init(allocator, stdin, stdout, stderr);
     defer node.deinit();
 
     try node.run();
