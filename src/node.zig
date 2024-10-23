@@ -46,9 +46,7 @@ pub fn Node(comptime T: type) type {
         }
 
         fn receiveMessage(self: *@This()) !?std.json.Parsed(com.Message) {
-            self.inp.streamUntilDelimiter(self.input_buffer.writer(), '\n', null) catch |err| {
-                if (err == error.EndOfStream) std.process.exit(0) else return err; // handle EndOfStream gracefully
-            };
+            try self.inp.streamUntilDelimiter(self.input_buffer.writer(), '\n', null);
             defer self.input_buffer.clearRetainingCapacity();
 
             const writer = self.log_buffer.writer();
@@ -88,7 +86,9 @@ pub fn Node(comptime T: type) type {
 
         pub fn run(self: *@This()) !void {
             while (true) {
-                const maybeParsedMessage = try self.receiveMessage();
+                const maybeParsedMessage = self.receiveMessage() catch |err| {
+                    if (err == error.EndOfStream) break else return err; // stop running if the input stream is closed, otherwise just bubble up the error
+                };
 
                 if (maybeParsedMessage) |parsedMessage| {
                     defer parsedMessage.deinit();
