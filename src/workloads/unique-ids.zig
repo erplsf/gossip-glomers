@@ -29,5 +29,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var node = Node(UniqueIdsHandler).init(allocator, stdin, stdout, stderr, UniqueIdsHandler{});
+    defer node.deinit();
+
     try node.run();
 }

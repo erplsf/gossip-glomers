@@ -26,5 +26,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var node = Node(BroadcastHandler).init(allocator, stdin, stdout, stderr, BroadcastHandler{});
+    defer node.deinit();
+
     try node.run();
 }
