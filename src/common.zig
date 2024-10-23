@@ -14,38 +14,38 @@ pub const BodyType = enum {
 pub const Body = union(BodyType) {
     init: struct {
         type: []const u8 = "init",
-        msg_id: i64,
+        msg_id: usize,
         node_id: []const u8,
         node_ids: [][]const u8,
     },
     init_ok: struct {
         type: []const u8 = "init_ok",
-        in_reply_to: i64,
+        in_reply_to: usize,
     },
     echo: struct {
         type: []const u8 = "echo",
         echo: []const u8,
-        msg_id: i64,
+        msg_id: usize,
     },
     echo_ok: struct {
         type: []const u8 = "echo_ok",
         echo: []const u8,
-        msg_id: i64,
-        in_reply_to: i64,
+        msg_id: usize,
+        in_reply_to: usize,
     },
     generate: struct {
         type: []const u8 = "generate",
-        msg_id: i64,
+        msg_id: usize,
     },
     generate_ok: struct {
         type: []const u8 = "generate_ok",
-        in_reply_to: i64,
+        in_reply_to: usize,
         id: []const u8,
     },
     topology: struct {
         type: []const u8 = "topology",
         topology: std.json.ArrayHashMap([][]const u8),
-        msg_id: i64,
+        msg_id: usize,
     },
     topology_ok: struct {
         type: []const u8 = "topology_ok",
@@ -66,7 +66,7 @@ pub const Body = union(BodyType) {
 };
 
 pub const Message = struct {
-    id: ?i64 = null, // HACK: received with all messages but we don't really care about it
+    id: ?usize = null, // HACK: received with all messages but we don't really care about it
     src: []const u8,
     dest: []const u8,
     body: Body,

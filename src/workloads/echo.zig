@@ -13,7 +13,7 @@ const EchoHandler = struct {
         _ = node;
         defer self.message_counter += 1;
 
-        const body = .{ .echo_ok = .{ .echo = echo_message.body.echo.echo, .in_reply_to = echo_message.body.echo.msg_id, .msg_id = @as(i64, @intCast(self.message_counter)) } };
+        const body = .{ .echo_ok = .{ .echo = echo_message.body.echo.echo, .in_reply_to = echo_message.body.echo.msg_id, .msg_id = self.message_counter } };
         return .{ .message = .{ .src = echo_message.dest, .dest = echo_message.src, .body = body } };
     }
 };
