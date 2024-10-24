@@ -18,7 +18,7 @@ const BroadcastHandler = struct {
     pub fn handle_topology(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
         _ = self;
         _ = node;
-        return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .topology_ok = .{} } } };
+        return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .topology_ok = .{ .in_reply_to = message.body.topology.msg_id } } } };
     }
 
     // TODO: accept global node options and build respond message with correct node id

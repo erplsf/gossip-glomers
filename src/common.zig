@@ -49,6 +49,7 @@ pub const Body = union(BodyType) {
     },
     topology_ok: struct {
         type: []const u8 = "topology_ok",
+        in_reply_to: usize,
     },
 
     pub fn jsonParseFromValue(allocator: std.mem.Allocator, value: std.json.Value, options: std.json.ParseOptions) !Body {
