@@ -22,9 +22,19 @@ const BroadcastHandler = struct {
     }
 
     pub fn handle_broadcast(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
-        _ = self;
         _ = node;
+        const value = message.body.broadcast.message;
+        try self.messages.append(value);
         return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .broadcast_ok = .{ .in_reply_to = message.body.broadcast.msg_id } } } };
+    }
+
+    pub fn handle_read(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
+        var arena = std.heap.ArenaAllocator.init(node.allocator);
+        const allocator = arena.allocator();
+
+        const messages = try allocator.dupe(usize, self.messages.items);
+
+        return .{ .allocator = arena, .message = .{ .src = message.dest, .dest = message.src, .body = .{ .read_ok = .{ .in_reply_to = message.body.read.msg_id, .messages = messages } } } };
     }
 
     // TODO: accept global node options and build respond message with correct node id
