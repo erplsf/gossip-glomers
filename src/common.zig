@@ -9,6 +9,8 @@ pub const BodyType = enum {
     generate_ok,
     topology,
     topology_ok,
+    broadcast,
+    broadcast_ok,
 };
 
 pub const Body = union(BodyType) {
@@ -49,6 +51,15 @@ pub const Body = union(BodyType) {
     },
     topology_ok: struct {
         type: []const u8 = "topology_ok",
+        in_reply_to: usize,
+    },
+    broadcast: struct {
+        type: []const u8 = "broadcast",
+        message: usize,
+        msg_id: usize,
+    },
+    broadcast_ok: struct {
+        type: []const u8 = "broadcast_ok",
         in_reply_to: usize,
     },
 

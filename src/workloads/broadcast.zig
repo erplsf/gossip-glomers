@@ -21,6 +21,12 @@ const BroadcastHandler = struct {
         return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .topology_ok = .{ .in_reply_to = message.body.topology.msg_id } } } };
     }
 
+    pub fn handle_broadcast(self: *@This(), node: *Node(@This()), message: Message) !?WrappedMessage {
+        _ = self;
+        _ = node;
+        return .{ .message = .{ .src = message.dest, .dest = message.src, .body = .{ .broadcast_ok = .{ .in_reply_to = message.body.broadcast.msg_id } } } };
+    }
+
     // TODO: accept global node options and build respond message with correct node id
     // HACK: global message counter, not thread safe
     // pub fn handle_generate(self: *BroadcastHandler, node: *Node(BroadcastHandler), message: com.Message) !?com.Message {
